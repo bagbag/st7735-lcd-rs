@@ -146,7 +146,7 @@ where
     }
 
     async fn write_words_buffered(&mut self, words: impl IntoIterator<Item = u16>) -> Result<(), ()> {
-        let mut buffer = [0; 32];
+        let mut buffer = [0; 128];
         let mut index = 0;
 
         for word in words {
@@ -209,6 +209,7 @@ where
 
         Ok(())
     }
+
     pub async fn write_pixels_buffered<P: IntoIterator<Item = u16>>(&mut self, colors: P) -> Result<(), ()> {
         self.write_command(Instruction::RAMWR, &[]).await?;
         self.start_data()?;
@@ -231,7 +232,6 @@ where
 extern crate embedded_graphics_core;
 #[cfg(feature = "graphics")]
 use self::embedded_graphics_core::{
-    draw_target::DrawTarget,
     pixelcolor::{
         raw::{RawData, RawU16},
         Rgb565,
@@ -259,6 +259,20 @@ where
         }
 
         Ok(())
+    }
+
+    pub async fn fill_contiguous_raw<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), ()>
+    where
+        I: IntoIterator<Item = Rgb565>,
+    {
+        self.set_pixels_buffered(
+            area.top_left.x as u16,
+            area.top_left.y as u16,
+            area.top_left.x as u16 + (area.size.width - 1) as u16,
+            area.top_left.y as u16 + (area.size.height - 1) as u16,
+            colors.into_iter().map(|color| RawU16::from(color).into_inner()),
+        )
+        .await
     }
 
     pub async fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), ()>
